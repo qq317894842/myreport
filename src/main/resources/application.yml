@@ -34,7 +34,7 @@ spring:
   mvc:
     static-path-pattern: /**
   resource:
-    static-locations: classpath:/static/,classpath:/public/
+    static-locations: classpath:/static/,classpath:/public/,classpath:/templates/
   autoconfigure:
     exclude: com.alibaba.druid.spring.boot.autoconfigure.DruidDataSourceAutoConfigure
   datasource:

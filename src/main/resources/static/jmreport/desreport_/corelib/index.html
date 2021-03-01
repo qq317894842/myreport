@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width">
+  <title>x-spreadsheet</title>
+  <script>
+       //配置后台项目地址
+       var base = 'http://127.0.0.1:8080/jeecg-boot'
+       var scriptPrev='/jmreport/desreport_/'
+       var scripts=[
+           "cdn/axios/axios.min.js",
+           "jquery/jquery-3.4.1.min.js",
+           "jquery/jquery.excel.js",
+       ]
+
+       function getToken(){
+         let token = getRequestUrl().token;
+         if(token){
+             window.localStorage.setItem('token',token);
+         }else{
+            token = window.localStorage.getItem('token') || "";
+         }
+         return token;
+     }
+
+       function getRequestUrl() {
+            var url = location.search;
+            var theRequest = new Object();
+            if (url.indexOf("?") != -1) {
+                var str = url.substr(1);
+                strs = str.split("&");
+                for(var i = 0; i < strs.length; i++) {
+                    theRequest[strs[i].split("=")[0]]=decodeURI(strs[i].split("=")[1]);
+                }
+     }
+     return theRequest;
+ }
+
+      function createScript(url){
+        const script = document.createElement('script');
+        script.src=base+scriptPrev+url;
+        document.head.appendChild(script)
+      }  
+
+      scripts.forEach(url=>{
+          createScript(url)
+      });
+  </script>
+ 
+<link href="xspreadsheet.css" rel="stylesheet"></head>
+<body onload="load()" style="overflow-y: hidden">
+    <div id="x-spreadsheet-demo">
+    </div>
+  <script>
+    var excel_config_id='519c1c6f4d1f584ae8fa5b43b45acdc7';
+    var xs = null;
+    function load() {
+        const options = {
+            "uploadUrl":"/design/report/upload", //统一上传地址
+            "uploadExcelUrl":"/design/report/importExcel",//上传excel方法
+            "viewLocalImage":"/design/report/img",//预览本地图片方法,//预览本地图片方法
+            pageSize:[10,20,30], //分页条数
+            domain:base,
+            showToolbar: true,     //头部操作按钮
+            showGrid: true,        //excel表格
+            showContextmenu: true, //右键操作按钮
+            view: {
+                height: () => document.documentElement.clientHeight,
+                width: () => document.documentElement.clientWidth,
+            },
+            row: {
+                len: 100,
+                height: 25,
+                minRowResizerHeight:1 //拖拽行最小高度
+            },
+            col: {
+                len: 26,
+                width: 100,
+                minWidth: 60,
+                height: 0,
+                minColResizerHeight:1//拖拽列最小高度
+            },
+            style: {
+                bgcolor: '#ffffff',
+                align: 'left',
+                valign: 'middle',
+                textwrap: false,
+                strike: false,
+                underline: false,
+                color: '#0a0a0a',
+                font: {
+                    name: 'Helvetica',
+                    size: 10,
+                    bold: false,
+                    italic: false,
+                },
+            },
+        };
+
+        //  x.spreadsheet.locale('zh-cn');
+        xs = x.spreadsheet('#x-spreadsheet-demo', options)
+                .onSave(function (data) {
+                    //设置报表打印宽度
+                    const dataRect = xs.data.getDataRect();
+                    let dataRectWidth = 0;
+                    if(dataRect){
+                        dataRectWidth = dataRect.w;
+                    }
+                    
+                    const printElWidth = xs.data.settings.printElWidth;
+                    data['dataRectWidth'] = dataRectWidth;
+                    data['excel_config_id'] = excel_config_id;
+                    data['printElWidth'] = Number(printElWidth) || dataRectWidth;
+                    
+                    jQuery.excelSave(data, function () {
+                        xs.tip("保存成功!");
+                    });
+                    console.log("data", data);
+                })
+                .onAddChart(function(a){
+                    console.log('11',a);
+                    var option = {
+                        title: {
+                            text: 'ECharts 入门示例'
+                        },
+                        tooltip: {},
+                        legend: {
+                            data: ['销量']
+                        },
+                        xAxis: {
+                            data: ["衬衫", "羊毛衫", "雪纺衫", "裤子", "高跟鞋", "袜子"]
+                        },
+                        yAxis: {},
+                        series: [{
+                            name: '销量',
+                            type: 'bar',
+                            data: [5, 20, 36, 10, 10, 20]
+                        }]
+                    }
+
+                    xs.addChart(option)
+                })
+               .onUploadExcel(function (res) {
+                   if(!res.success) return;
+                   const xsData ={...xs.getData()};
+                   xsData.styles = res.result.style;
+                   xsData.rows = res.result.rows;
+                   xs.loadData(xsData);
+               });
+
+        jQuery.excelGet(excel_config_id,getToken(),function (res) {
+            //加入预览地址
+            xs.data.settings.viewUrl = window.location.origin+"/view.html?excel_config_id="
+            +excel_config_id+"&develop=true&origin="
+            +base.replace("/jeecg-boot","")
+            if (res.success) {
+                var str = res.result.jsonStr;
+                if(!str) return;
+                //页面加载时设置报表宽度
+                const jsonStr = JSON.parse(str);
+                xs.data.settings.printElWidth = jsonStr.printElWidth || 0;
+                xs.loadData(jsonStr);
+            } else {
+                xs.tip(res.message);
+            }
+        })
+        
+    }
+</script>
+<script type="text/javascript" src="jmsheet.js"></script></body>
+</html>
